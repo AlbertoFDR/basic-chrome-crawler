@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+
+const CDP = require('chrome-remote-interface');
+const fs = require('fs');
+
+var cookies = undefined;
+let userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
+"(KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36";
+
+let headers = "";
+async function example() {
+    let client;
+    try {
+        // connect to endpoint
+        client = await CDP();
+
+        // extract domains
+        const {Network, Page} = client;
+
+        // setup handlers
+        Network.requestWillBeSent((params) => {
+            console.log(params.request);
+		//headers = headers + "\n" + "${params.request}";
+		console.log(`${(params.redirectResponse || {}).url} (${(params.redirectResponse || {}).status}) -> ${params.request.url}`);
+        });
+	Network.responseReceived((params) => {
+            //console.log(params.response);
+        });
+	Page.frameNavigated((frame) => {
+		console.log(frame.frame.url);
+	});
+
+        // enable events then start!
+	await Network.setUserAgentOverride({userAgent});
+        await Network.enable();
+        await Page.enable();
+        await Page.navigate({url: 'https://bit.ly/1cY78RZ'});
+        await Page.loadEventFired();
+	cookies = await Page.getCookies();
+	/*let foto = await Page.captureScreenshot();
+	foto = foto.data.replace(/^data:image\/png;base64,/, "");
+	fs.writeFile("photo.png", foto,{encoding: 'base64'}, function(err) {
+		if(err) {
+			return console.log(err);
+		}
+		console.log("The file was saved!");
+	});*/
+	
+    } catch (err) {
+        console.error(err);
+    } finally {
+        if (client) {
+		await client.Browser.close();
+            await client.close();
+		
+        }
+    }
+}
+
+const { spawn } = require('child_process');
+async function browser(){
+	const hijo = spawn('chromium', [' --remote-debugging-port=9222']);
+	console.log(hijo.pid)
+	hijo.on('error', (err) => {
+		console.log('Failed to start subprocess.');+
+		console.log(err);
+	});
+}
+
+browser();
+const wait = ms => new Promise(resuelve => setTimeout(resuelve, ms));
+wait(5000).then(() => example()).then(() => console.log(headers));
+
