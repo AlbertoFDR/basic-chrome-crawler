@@ -5,6 +5,9 @@ Basic chrome crawler using the low level interface called chrome-remote-interfac
 ### Basic use
 ```
 node myCrawler
+```
+or
+```
 nodejs myCrawler
 ```
 
